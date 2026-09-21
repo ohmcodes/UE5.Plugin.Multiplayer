@@ -73,3 +73,18 @@ Plugins/**/Intermediate/*
 
 # Cache files for the editor to use
 DerivedDataCache/*
+/MPPlugin58/Saved
+/MPPlugin58/Intermediate
+/MPPlugin58/Source/MPPlugin58/Variant_Combat
+/MPPlugin58/Source/MPPlugin58/Variant_SideScrolling
+/MPPlugin58/Source/MPPlugin58/Variant_Platforming
+/MPPlugin58/DerivedDataCache
+/MPPlugin58/Content/Variant_SideScrolling
+/MPPlugin58/Content/Variant_Platforming
+/MPPlugin58/Content/__ExternalActors__
+/MPPlugin58/Content/__ExternalObjects__
+/MPPlugin58/Content/Characters
+/MPPlugin58/Content/Input
+/MPPlugin58/Content/LevelPrototyping
+/MPPlugin58/Content/ThirdPerson
+/MPPlugin58/Content/Variant_Combat
