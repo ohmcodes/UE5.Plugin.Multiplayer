@@ -12,6 +12,8 @@
 #include "InputActionValue.h"
 #include "MPPlugin58.h"
 #include "Kismet/GameplayStatics.h"
+#include "OnlineSubsystem.h"
+#include "Interfaces/OnlineSessionInterface.h"
 
 AMPPlugin58Character::AMPPlugin58Character()
 {
@@ -49,6 +51,29 @@ AMPPlugin58Character::AMPPlugin58Character()
 
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
 	// are set in the derived blueprint asset named ThirdPersonCharacter (to avoid direct content references in C++)
+
+	IOnlineSubsystem* OnlineSubsystem = IOnlineSubsystem::Get();
+
+	if (OnlineSubsystem)
+	{
+		OnlineSessionInterface = OnlineSubsystem->GetSessionInterface();
+		UE_LOG(LogMPPlugin58, Log, TEXT("Online Subsystem: %s"), *OnlineSubsystem->GetSubsystemName().ToString());
+	}
+	else
+	{
+		UE_LOG(LogMPPlugin58, Warning, TEXT("No Online Subsystem found!"));
+	}
+
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(
+			-1, 
+			5.f, 
+			FColor::Green, 
+			FString::Printf(TEXT("Online Subsystem Initialized: %s"), *OnlineSubsystem->GetSubsystemName().ToString())
+		);
+
+	}
 }
 
 void AMPPlugin58Character::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
