@@ -36,6 +36,18 @@
 			"Type": "RequiredResource"
 		},
 		{
+			"Path": "$(ProjectDir)/Plugins/MultiplayerSessionsUE58/Binaries/Win64/UnrealEditor-MultiplayerSessionsUE58.dll",
+			"Type": "DynamicLibrary"
+		},
+		{
+			"Path": "$(ProjectDir)/Plugins/MultiplayerSessionsUE58/Binaries/Win64/UnrealEditor-MultiplayerSessionsUE58.pdb",
+			"Type": "SymbolFile"
+		},
+		{
+			"Path": "$(ProjectDir)/Plugins/MultiplayerSessionsUE58/Binaries/Win64/UnrealEditor.modules",
+			"Type": "RequiredResource"
+		},
+		{
 			"Path": "$(EngineDir)/Binaries/Win64/AgentInterface.dll",
 			"Type": "DynamicLibrary"
 		},
@@ -8671,6 +8683,10 @@
 	"RuntimeDependencies": [
 		{
 			"Path": "$(ProjectDir)/MPPlugin58.uproject",
+			"Type": "UFS"
+		},
+		{
+			"Path": "$(ProjectDir)/Plugins/MultiplayerSessionsUE58/MultiplayerSessionsUE58.uplugin",
 			"Type": "UFS"
 		},
 		{
@@ -33710,6 +33726,7 @@
 		"ModelViewViewModel",
 		"ModelingToolsEditorMode",
 		"MsQuic",
+		"MultiplayerSessionsUE58",
 		"Mutable",
 		"MutableAssetUserData",
 		"N10XSourceCodeAccess",
