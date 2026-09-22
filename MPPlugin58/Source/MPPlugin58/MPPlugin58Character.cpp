@@ -12,12 +12,15 @@
 #include "InputActionValue.h"
 #include "MPPlugin58.h"
 #include "Kismet/GameplayStatics.h"
+
 #include "OnlineSubsystem.h"
 #include "OnlineSessionSettings.h"
+#include "Online/OnlineSessionNames.h"
 
 
 AMPPlugin58Character::AMPPlugin58Character():
-	CreateSessionCompleteDelegate(FOnCreateSessionCompleteDelegate::CreateUObject(this, &AMPPlugin58Character::OnCreateSessionComplete))
+	CreateSessionCompleteDelegate(FOnCreateSessionCompleteDelegate::CreateUObject(this, &AMPPlugin58Character::OnCreateSessionComplete)),
+	FindSessionCompleteDelegate(FOnFindSessionsCompleteDelegate::CreateUObject(this, &AMPPlugin58Character::OnFindSessionComplete))
 {
 	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
@@ -160,30 +163,6 @@ void AMPPlugin58Character::DoJumpEnd()
 	StopJumping();
 }
 
-void AMPPlugin58Character::OpenLobby()
-{
-	UWorld* World = GetWorld();
-
-	if (World)
-	{
-		World->ServerTravel("/Game/Levels/Lobby?listen");
-	}
-}
-
-void AMPPlugin58Character::CallOpenLevel(const FString& Address)
-{
-	UGameplayStatics::OpenLevel(this, FName(*Address));
-}
-
-void AMPPlugin58Character::CallClientTravel(const FString& Address)
-{
-	APlayerController* PlayerController = GetGameInstance()->GetFirstLocalPlayerController();
-	if (PlayerController)
-	{
-		PlayerController->ClientTravel(Address, ETravelType::TRAVEL_Absolute);
-	}
-}
-
 void AMPPlugin58Character::CreateGameSession()
 {
 	if (!OnlineSessionInterface.IsValid())
@@ -206,10 +185,49 @@ void AMPPlugin58Character::CreateGameSession()
 	SessionSettings->bAllowJoinViaPresence = true;
 	SessionSettings->bShouldAdvertise = true;
 	SessionSettings->bUsesPresence = true;
-
+	SessionSettings->bUseLobbiesIfAvailable = true;
+	SessionSettings->Set(FName("MatchType"), FString("FreeForAll"), EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 	const ULocalPlayer* LocalPlayer = GetWorld()->GetFirstLocalPlayerFromController();
 	OnlineSessionInterface->AddOnCreateSessionCompleteDelegate_Handle(CreateSessionCompleteDelegate);
 	OnlineSessionInterface->CreateSession(*LocalPlayer->GetPreferredUniqueNetId(), NAME_GameSession, *SessionSettings);
+}
+
+void AMPPlugin58Character::JoinGameSession()
+{
+	if (!OnlineSessionInterface.IsValid())
+	{
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(
+				-1,
+				5.f,
+				FColor::Red,
+				FString(TEXT("Online Session Interface is not valid!"))
+			);
+		}
+		
+		return;
+	}
+
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(
+			-1,
+			5.f,
+			FColor::Green,
+			FString(TEXT("Joining Session"))
+		);
+	}
+
+	OnlineSessionInterface->AddOnFindSessionsCompleteDelegate_Handle(FindSessionCompleteDelegate);
+
+	SessionSearch = MakeShareable(new FOnlineSessionSearch());
+	SessionSearch->MaxSearchResults = 1000;
+	SessionSearch->bIsLanQuery = false;
+	SessionSearch->QuerySettings.Set(SEARCH_LOBBIES, true, EOnlineComparisonOp::Equals);
+	
+	const ULocalPlayer* LocalPlayer = GetWorld()->GetFirstLocalPlayerFromController();
+	OnlineSessionInterface->FindSessions(*LocalPlayer->GetPreferredUniqueNetId(), SessionSearch.ToSharedRef());
 }
 
 void AMPPlugin58Character::OnCreateSessionComplete(FName SessionName, bool bWasSuccessful)
@@ -246,4 +264,26 @@ void AMPPlugin58Character::OnCreateSessionComplete(FName SessionName, bool bWasS
 		}
 	}
 
+}
+
+void AMPPlugin58Character::OnFindSessionComplete(bool bWasSuccessful)
+{
+
+	for (auto Result : SessionSearch->SearchResults)
+	{
+		FString Id = Result.GetSessionIdStr();
+		FString User = Result.Session.OwningUserName;
+
+		UE_LOG(LogMPPlugin58, Log, TEXT("Found session Id: %s, Owning User: %s"), *Id, *User);
+
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(
+				-1,
+				5.f,
+				FColor::Green,
+				FString::Printf(TEXT("Found session Id: %s, Owning User: %s"), *Id, *User)
+			);
+		}
+	}
 }
