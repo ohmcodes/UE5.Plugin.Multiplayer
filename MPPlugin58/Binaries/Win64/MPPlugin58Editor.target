@@ -8392,6 +8392,18 @@
 			"Type": "RequiredResource"
 		},
 		{
+			"Path": "$(EngineDir)/Plugins/Runtime/Steam/SteamSockets/Binaries/Win64/UnrealEditor-SteamSockets.dll",
+			"Type": "DynamicLibrary"
+		},
+		{
+			"Path": "$(EngineDir)/Plugins/Runtime/Steam/SteamSockets/Binaries/Win64/UnrealEditor-SteamSockets.pdb",
+			"Type": "SymbolFile"
+		},
+		{
+			"Path": "$(EngineDir)/Plugins/Runtime/Steam/SteamSockets/Binaries/Win64/UnrealEditor.modules",
+			"Type": "RequiredResource"
+		},
+		{
 			"Path": "$(EngineDir)/Plugins/Runtime/Synthesis/Binaries/Win64/UnrealEditor-Synthesis.dll",
 			"Type": "DynamicLibrary"
 		},
@@ -33490,6 +33502,10 @@
 			"Type": "UFS"
 		},
 		{
+			"Path": "$(EngineDir)/Plugins/Runtime/Steam/SteamSockets/SteamSockets.uplugin",
+			"Type": "UFS"
+		},
+		{
 			"Path": "$(EngineDir)/Plugins/Runtime/Synthesis/Synthesis.uplugin",
 			"Type": "UFS"
 		},
@@ -33756,6 +33772,7 @@
 		"SpeedTreeImporter",
 		"StateTree",
 		"SteamShared",
+		"SteamSockets",
 		"StylusInput",
 		"SubversionSourceControl",
 		"Synthesis",

@@ -20,7 +20,8 @@
 
 AMPPlugin58Character::AMPPlugin58Character():
 	CreateSessionCompleteDelegate(FOnCreateSessionCompleteDelegate::CreateUObject(this, &AMPPlugin58Character::OnCreateSessionComplete)),
-	FindSessionCompleteDelegate(FOnFindSessionsCompleteDelegate::CreateUObject(this, &AMPPlugin58Character::OnFindSessionComplete))
+	FindSessionCompleteDelegate(FOnFindSessionsCompleteDelegate::CreateUObject(this, &AMPPlugin58Character::OnFindSessionComplete)),
+	JoinSessionCompleteDelegate(FOnJoinSessionCompleteDelegate::CreateUObject(this, &AMPPlugin58Character::OnJoinSessionComplete))
 {
 	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
@@ -200,7 +201,7 @@ void AMPPlugin58Character::JoinGameSession()
 		{
 			GEngine->AddOnScreenDebugMessage(
 				-1,
-				5.f,
+				20.f,
 				FColor::Red,
 				FString(TEXT("Online Session Interface is not valid!"))
 			);
@@ -213,7 +214,7 @@ void AMPPlugin58Character::JoinGameSession()
 	{
 		GEngine->AddOnScreenDebugMessage(
 			-1,
-			5.f,
+			20.f,
 			FColor::Green,
 			FString(TEXT("Joining Session"))
 		);
@@ -240,11 +241,17 @@ void AMPPlugin58Character::OnCreateSessionComplete(FName SessionName, bool bWasS
 		{
 			GEngine->AddOnScreenDebugMessage(
 				-1,
-				5.f,
+				20.f,
 				FColor::Blue,
 				FString::Printf(TEXT("Session created successfully: %s"), *SessionName.ToString())
 			);
 
+		}
+
+		UWorld* World = GetWorld();
+		if (World)
+		{
+			World->ServerTravel(FString("/Game/Levels/Lobby?listen"));
 		}
 
 	}
@@ -256,7 +263,7 @@ void AMPPlugin58Character::OnCreateSessionComplete(FName SessionName, bool bWasS
 		{
 			GEngine->AddOnScreenDebugMessage(
 				-1,
-				5.f,
+				20.f,
 				FColor::Red,
 				FString(TEXT("Failed to create session"))
 			);
@@ -268,11 +275,19 @@ void AMPPlugin58Character::OnCreateSessionComplete(FName SessionName, bool bWasS
 
 void AMPPlugin58Character::OnFindSessionComplete(bool bWasSuccessful)
 {
+	if (!OnlineSessionInterface.IsValid())
+	{
+		UE_LOG(LogMPPlugin58, Log, TEXT("Online Session Interface is not valid!"));
+
+		return;
+	}
 
 	for (auto Result : SessionSearch->SearchResults)
 	{
 		FString Id = Result.GetSessionIdStr();
 		FString User = Result.Session.OwningUserName;
+		FString MatchType;
+		Result.Session.SessionSettings.Get(FName("MatchType"), MatchType);
 
 		UE_LOG(LogMPPlugin58, Log, TEXT("Found session Id: %s, Owning User: %s"), *Id, *User);
 
@@ -280,9 +295,83 @@ void AMPPlugin58Character::OnFindSessionComplete(bool bWasSuccessful)
 		{
 			GEngine->AddOnScreenDebugMessage(
 				-1,
-				5.f,
+				20.f,
 				FColor::Green,
-				FString::Printf(TEXT("Found session Id: %s, Owning User: %s"), *Id, *User)
+				FString::Printf(TEXT("Found session Id: %s, Owning User: %s, MatchType: %s"), *Id, *User, *MatchType)
+			);
+		}
+		if (MatchType == "FreeForAll")
+		{
+			UE_LOG(LogMPPlugin58, Log, TEXT("Found FreeForAll"));
+
+			if (GEngine)
+			{
+				GEngine->AddOnScreenDebugMessage(
+					-1,
+					20.f,
+					FColor::Green,
+					FString::Printf(TEXT("Joining session Id: %s, Owning User: %s, MatchType: %s"), *Id, *User, *MatchType)
+				);
+			}
+			
+			OnlineSessionInterface->AddOnJoinSessionCompleteDelegate_Handle(JoinSessionCompleteDelegate);
+
+			const ULocalPlayer* LocalPlayer = GetWorld()->GetFirstLocalPlayerFromController();
+			OnlineSessionInterface->JoinSession(*LocalPlayer->GetPreferredUniqueNetId(), NAME_GameSession, Result);
+
+			break;
+		}
+	}
+}
+
+void AMPPlugin58Character::OnJoinSessionComplete(FName SessionName, EOnJoinSessionCompleteResult::Type Result)
+{
+	if (!OnlineSessionInterface.IsValid())
+	{
+		return;
+	}
+	FString ConnectInfo;
+	if(OnlineSessionInterface->GetResolvedConnectString(NAME_GameSession, ConnectInfo))
+	{
+		UE_LOG(LogMPPlugin58, Log, TEXT("Resolved Connect String: %s"), *ConnectInfo);
+
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(
+				-1,
+				20.f,
+				FColor::Yellow,
+				FString::Printf(TEXT("Resolved Connect String: %s"), *ConnectInfo)
+			);
+		}
+	}
+
+	APlayerController* PlayerController = GetGameInstance()->GetFirstLocalPlayerController(GetWorld());
+
+	if (PlayerController)
+	{
+		UE_LOG(LogMPPlugin58, Log, TEXT("Traveling"));
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(
+				-1,
+				20.f,
+				FColor::Green,
+				FString(TEXT("Traveling"))
+			);
+		}
+		PlayerController->ClientTravel(ConnectInfo, ETravelType::TRAVEL_Absolute);
+	}
+	else
+	{
+		UE_LOG(LogMPPlugin58, Error, TEXT("PlayerController is null!"));
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(
+				-1,
+				20.f,
+				FColor::Red,
+				FString(TEXT("PlayerController is null!"))
 			);
 		}
 	}
