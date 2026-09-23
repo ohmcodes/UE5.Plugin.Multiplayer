@@ -6,8 +6,10 @@
 #include "Subsystems/GameInstanceSubsystem.h"
 
 #include "Interfaces/OnlineSessionInterface.h"
+#include "Interfaces/OnlineFriendsInterface.h"
 
 #include "MultiplayerSessionsSubsystem.generated.h"
+
 
 /**
  * 
@@ -19,10 +21,51 @@ class MULTIPLAYERSESSIONSUE58_API UMultiplayerSessionsSubsystem : public UGameIn
 
 public:
 	UMultiplayerSessionsSubsystem();
-	// Add your public methods and properties here
+	
+	void CreateSession(int32 NumPublicConnections, FString MatchType);
+	void FindSessions(int32 MaxSearchResults);
+	void JoinSession(const FOnlineSessionSearchResult& SessionResult);
+	void DestroySession();
+	void StartSession();
+	void FindFriendSession(int32 LocalPlayerNum, const FUniqueNetId& FriendUniqueNetId);
+	void SendSessionInviteToFriend(int32 LocalPlayerNum, const FUniqueNetId& FriendUniqueNetId);
+	void FriendsList(int32 LocalPlayerNum);
 
 protected:
+	void OnCreateSessionComplete(FName SessionName, bool bWasSuccessful);
+	void OnFindSessionsComplete(bool bWasSuccessful);
+	void OnJoinSessionComplete(FName SessionName, EOnJoinSessionCompleteResult::Type Result);
+	void OnDestroySessionComplete(FName SessionName, bool bWasSuccessful);
+	void OnStartSessionComplete(FName SessionName, bool bWasSuccessful);
+	void OnFindFriendSessionComplete(int32 LocalPlayerNum, bool bWasSuccessful, const TArray<FOnlineSessionSearchResult>& SessionResults);
+	void OnSessionInviteReceived(const FUniqueNetId& LocalUserId, const FUniqueNetId& PersonInviting, const FString& AppId, const FOnlineSessionSearchResult& SearchResult);
+	void OnSessionUserInviteAccepted(bool bWasSuccessful, int32 LocalPlayerNum, FUniqueNetIdPtr PersonInvited, const FOnlineSessionSearchResult& SearchResult);
+	void OnReadFriendsListComplete(int32 LocalPlayerNum, bool bWasSuccessful, const FString& ListName, const FString& ErrorStr);
 
 private:
 	IOnlineSessionPtr SessionInterface;
+	IOnlineFriendsPtr FriendsInterface;
+
+	FOnCreateSessionCompleteDelegate CreateSessionCompleteDelegate;
+	FOnFindSessionsCompleteDelegate FindSessionsCompleteDelegate;
+	FOnJoinSessionCompleteDelegate JoinSessionCompleteDelegate;
+	FOnDestroySessionCompleteDelegate DestroySessionCompleteDelegate;
+	FOnStartSessionCompleteDelegate StartSessionCompleteDelegate;
+
+	FOnFindFriendSessionCompleteDelegate FindFriendSessionCompleteDelegate;
+	FOnSessionInviteReceivedDelegate SessionInviteReceivedDelegate;
+	FOnSessionUserInviteAcceptedDelegate SessionUserInviteAcceptedDelegate;
+
+	FOnReadFriendsListComplete ReadFriendsListCompleteDelegate;
+
+	FDelegateHandle CreateSessionCompleteDelegateHandle;
+	FDelegateHandle FindSessionsCompleteDelegateHandle;
+	FDelegateHandle JoinSessionCompleteDelegateHandle;
+	FDelegateHandle DestroySessionCompleteDelegateHandle;
+	FDelegateHandle StartSessionCompleteDelegateHandle;
+	FDelegateHandle FindFriendSessionCompleteDelegateHandle;
+	FDelegateHandle SessionInviteReceivedDelegateHandle;
+	FDelegateHandle SessionUserInviteAcceptedDelegateHandle;
+	FDelegateHandle ReadFriendsListCompleteDelegateHandle;
+
 };
