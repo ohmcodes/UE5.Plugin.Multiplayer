@@ -5,7 +5,7 @@
 #include "Components/Button.h"
 #include "MultiplayerSessionsSubsystem.h"
 #include "OnlineSessionSettings.h"
-
+#include "Interfaces/OnlineSessionInterface.h"
 
 void UMenu::MenuSetup(int32 InNumPublicConnections, FString InMatchType)
 {
@@ -14,7 +14,8 @@ void UMenu::MenuSetup(int32 InNumPublicConnections, FString InMatchType)
 
 	AddToViewport();
 	SetVisibility(ESlateVisibility::Visible);
-	bIsFocusable = true;
+	//bIsFocusable = true; deprecated, use SetIsFocusable instead
+	SetIsFocusable(true);
 
 	UWorld* World = GetWorld();
 
@@ -101,10 +102,78 @@ void UMenu::OnCreateSession(bool bWasSuccessful)
 
 void UMenu::OnFindSessions(const TArray<FOnlineSessionSearchResult>& SessionResults, bool bWasSuccessful)
 {
+	for (const FOnlineSessionSearchResult& Result : SessionResults)
+	{
+		FString Id = Result.GetSessionIdStr();
+		FString User = Result.Session.OwningUserName;
+		FString FoundMatchType;
+		Result.Session.SessionSettings.Get(FName("MatchType"), FoundMatchType);
+		if (GEngine)	
+		{
+			GEngine->AddOnScreenDebugMessage(-1, 15.f, FColor::Yellow, FString::Printf(TEXT("Found session Id: %s, Owning User: %s, MatchType: %s"), *Id, *User, *FoundMatchType));
+		}
+		if (MatchType == FoundMatchType)
+		{
+			if (GEngine)
+			{
+				GEngine->AddOnScreenDebugMessage(-1, 15.f, FColor::Green, FString::Printf(TEXT("Joining session Id: %s, Owning User: %s, MatchType: %s"), *Id, *User, *FoundMatchType));
+			}
+			if (MultiplayerSessionsSubsystem)
+			{
+				MultiplayerSessionsSubsystem->JoinSession(Result);
+			}
+			break;
+		}
+	}
 }
 
 void UMenu::OnJoinSession(EOnJoinSessionCompleteResult::Type Result)
 {
+	if (GEngine)
+	{
+		FString ResultString;
+		switch (Result)
+		{
+		case EOnJoinSessionCompleteResult::Success:
+			ResultString = TEXT("Success");
+			break;
+		case EOnJoinSessionCompleteResult::SessionIsFull:
+			ResultString = TEXT("Session is full");
+			break;
+		case EOnJoinSessionCompleteResult::SessionDoesNotExist:
+			ResultString = TEXT("Session does not exist");
+			break;
+		case EOnJoinSessionCompleteResult::CouldNotRetrieveAddress:
+			ResultString = TEXT("Could not retrieve address");
+			break;
+		case EOnJoinSessionCompleteResult::AlreadyInSession:
+			ResultString = TEXT("Already in session");
+			break;
+		default:
+			ResultString = TEXT("Unknown error");
+			break;
+		}
+		GEngine->AddOnScreenDebugMessage(-1, 15.f, FColor::Green, FString::Printf(TEXT("Join Session Result: %s"), *ResultString));
+	}
+
+	IOnlineSubsystem* Subsystem = IOnlineSubsystem::Get();
+	if (Subsystem)
+	{
+		IOnlineSessionPtr SessionInterface = Subsystem->GetSessionInterface();
+
+		if (SessionInterface.IsValid())
+		{
+			FString ConnectInfo;
+			if (SessionInterface->GetResolvedConnectString(NAME_GameSession, ConnectInfo))
+			{
+				APlayerController* PlayerController = GetGameInstance()->GetFirstLocalPlayerController();
+				if (PlayerController)
+				{
+					PlayerController->ClientTravel(ConnectInfo, ETravelType::TRAVEL_Absolute);
+				}
+			}
+		}
+	}
 }
 
 void UMenu::OnDestroySession(bool bWasSuccessful)
@@ -132,7 +201,7 @@ void UMenu::OnJoinClicked()
 {
 	if (GEngine)
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 15.f, FColor::Green, TEXT("Join Session"));
+		GEngine->AddOnScreenDebugMessage(-1, 15.f, FColor::Green, TEXT("Joining Session"));
 	}
 
 	if (MultiplayerSessionsSubsystem)
