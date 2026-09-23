@@ -11,6 +11,15 @@
 #include "MultiplayerSessionsSubsystem.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FMultiplayerOnCreateSessionComplete, bool, bWasSuccessful);
+DECLARE_MULTICAST_DELEGATE_TwoParams(FMultiplayerOnFindSessionsComplete, const TArray<FOnlineSessionSearchResult>& SessionResults, bool bWasSuccessful);
+DECLARE_MULTICAST_DELEGATE_OneParam(FMultiplayerOnJoinSessionComplete, EOnJoinSessionCompleteResult::Type Result);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FMultiplayerOnDestroySessionComplete, bool, bWasSuccessful);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FMultiplayerOnStartSessionComplete, bool, bWasSuccessful);
+
+DECLARE_MULTICAST_DELEGATE_ThreeParams(FMultiplayerOnFindFriendSessionComplete, int32 LocalPlayerNum, bool bWasSuccessful, const TArray<FOnlineSessionSearchResult>&  SessionResults);
+DECLARE_MULTICAST_DELEGATE_FourParams(FMultiplayerOnSessionInviteReceived, const FUniqueNetId& LocalUserId, const FUniqueNetId& PersonInviting, const FString& AppId, const FOnlineSessionSearchResult& SearchResult);
+DECLARE_MULTICAST_DELEGATE_FourParams(FMultiplayerOnSessionUserInviteAccepted, bool bWasSuccessful, int32 LocalPlayerNum, FUniqueNetIdPtr PersonInvited, const FOnlineSessionSearchResult& SearchResult);
+DECLARE_MULTICAST_DELEGATE_FourParams(FMultiplayerOnReadFriendsListComplete, int32 LocalPlayerNum, bool bWasSuccessful, const FString& ListName, const FString& ErrorStr);
 
 /**
  * 
@@ -28,12 +37,23 @@ public:
 	void JoinSession(const FOnlineSessionSearchResult& SessionResult);
 	void DestroySession();
 	void StartSession();
+
 	void FindFriendSession(int32 LocalPlayerNum, const FUniqueNetId& FriendUniqueNetId);
 	void SendSessionInviteToFriend(int32 LocalPlayerNum, const FUniqueNetId& FriendUniqueNetId);
 	void FriendsList(int32 LocalPlayerNum);
 
 	// Custom Delegates for the Menu class to bind to
 	FMultiplayerOnCreateSessionComplete MultiplayerOnCreateSessionComplete;
+	FMultiplayerOnFindSessionsComplete MultiplayerOnFindSessionsComplete;
+	FMultiplayerOnJoinSessionComplete MultiplayerOnJoinSessionComplete;
+
+	FMultiplayerOnDestroySessionComplete MultiplayerOnDestroySessionComplete;
+	FMultiplayerOnStartSessionComplete MultiplayerOnStartSessionComplete;
+
+	FMultiplayerOnFindFriendSessionComplete MultiplayerOnFindFriendSessionComplete;
+	FMultiplayerOnSessionInviteReceived MultiplayerOnSessionInviteReceived;
+	FMultiplayerOnSessionUserInviteAccepted MultiplayerOnSessionUserInviteAccepted;
+	FMultiplayerOnReadFriendsListComplete MultiplayerOnReadFriendsListComplete;
 
 protected:
 	void OnCreateSessionComplete(FName SessionName, bool bWasSuccessful);
@@ -41,6 +61,7 @@ protected:
 	void OnJoinSessionComplete(FName SessionName, EOnJoinSessionCompleteResult::Type Result);
 	void OnDestroySessionComplete(FName SessionName, bool bWasSuccessful);
 	void OnStartSessionComplete(FName SessionName, bool bWasSuccessful);
+
 	void OnFindFriendSessionComplete(int32 LocalPlayerNum, bool bWasSuccessful, const TArray<FOnlineSessionSearchResult>& SessionResults);
 	void OnSessionInviteReceived(const FUniqueNetId& LocalUserId, const FUniqueNetId& PersonInviting, const FString& AppId, const FOnlineSessionSearchResult& SearchResult);
 	void OnSessionUserInviteAccepted(bool bWasSuccessful, int32 LocalPlayerNum, FUniqueNetIdPtr PersonInvited, const FOnlineSessionSearchResult& SearchResult);
