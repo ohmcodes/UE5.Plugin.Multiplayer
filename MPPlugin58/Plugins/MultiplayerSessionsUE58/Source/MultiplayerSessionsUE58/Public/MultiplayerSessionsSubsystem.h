@@ -10,6 +10,7 @@
 
 #include "MultiplayerSessionsSubsystem.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FMultiplayerOnCreateSessionComplete, bool, bWasSuccessful);
 
 /**
  * 
@@ -30,6 +31,9 @@ public:
 	void FindFriendSession(int32 LocalPlayerNum, const FUniqueNetId& FriendUniqueNetId);
 	void SendSessionInviteToFriend(int32 LocalPlayerNum, const FUniqueNetId& FriendUniqueNetId);
 	void FriendsList(int32 LocalPlayerNum);
+
+	// Custom Delegates for the Menu class to bind to
+	FMultiplayerOnCreateSessionComplete MultiplayerOnCreateSessionComplete;
 
 protected:
 	void OnCreateSessionComplete(FName SessionName, bool bWasSuccessful);
