@@ -46,6 +46,8 @@ private:
 	IOnlineSessionPtr SessionInterface;
 	IOnlineFriendsPtr FriendsInterface;
 
+	TSharedPtr<FOnlineSessionSettings> LastSessionSettings;
+
 	FOnCreateSessionCompleteDelegate CreateSessionCompleteDelegate;
 	FOnFindSessionsCompleteDelegate FindSessionsCompleteDelegate;
 	FOnJoinSessionCompleteDelegate JoinSessionCompleteDelegate;
