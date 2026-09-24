@@ -7,10 +7,11 @@
 #include "OnlineSessionSettings.h"
 #include "Interfaces/OnlineSessionInterface.h"
 
-void UMenu::MenuSetup(int32 InNumPublicConnections, FString InMatchType)
+void UMenu::MenuSetup(int32 InNumPublicConnections, FString InMatchType, FString InPathToLobby)
 {
 	NumPublicConnections = InNumPublicConnections;
 	MatchType = InMatchType;
+	PathToLobby = InPathToLobby;
 
 	AddToViewport();
 	SetVisibility(ESlateVisibility::Visible);
@@ -88,7 +89,7 @@ void UMenu::OnCreateSession(bool bWasSuccessful)
 		UWorld* World = GetWorld();
 		if (World)
 		{
-			World->ServerTravel("/Game/Levels/Lobby?listen");
+			World->ServerTravel(PathToLobby + TEXT("?listen"));
 		}
 	}
 	else
@@ -97,6 +98,8 @@ void UMenu::OnCreateSession(bool bWasSuccessful)
 		{
 			GEngine->AddOnScreenDebugMessage(-1, 15.f, FColor::Red, TEXT("Failed to create session!"));
 		}
+		btn_create->SetIsEnabled(true);
+		btn_join->SetIsEnabled(true);
 	}
 }
 
@@ -124,6 +127,16 @@ void UMenu::OnFindSessions(const TArray<FOnlineSessionSearchResult>& SessionResu
 			}
 			break;
 		}
+	}
+
+	if (!bWasSuccessful || SessionResults.Num() == 0)
+	{
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(-1, 15.f, FColor::Red, TEXT("No sessions found!"));
+		}
+		btn_join->SetIsEnabled(true);
+		btn_create->SetIsEnabled(true);
 	}
 }
 
@@ -174,10 +187,21 @@ void UMenu::OnJoinSession(EOnJoinSessionCompleteResult::Type Result)
 			}
 		}
 	}
+
+	if (Result != EOnJoinSessionCompleteResult::Success)
+	{
+		btn_join->SetIsEnabled(true);
+	}
+
 }
 
 void UMenu::OnDestroySession(bool bWasSuccessful)
 {
+	if (bWasSuccessful)
+	{
+		btn_create->SetIsEnabled(true);
+		btn_join->SetIsEnabled(true);
+	}
 }
 
 void UMenu::OnStartSession(bool bWasSuccessful)
@@ -197,6 +221,9 @@ void UMenu::OnStartSession(bool bWasSuccessful)
 
 void UMenu::OnCreateClicked()
 {
+	btn_join->SetIsEnabled(false);
+	btn_create->SetIsEnabled(false);
+
 	if (GEngine)
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 15.f, FColor::Green, TEXT("Create Session"));
@@ -210,6 +237,8 @@ void UMenu::OnCreateClicked()
 
 void UMenu::OnJoinClicked()
 {
+	btn_create->SetIsEnabled(false);
+	btn_join->SetIsEnabled(false);
 	if (GEngine)
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 15.f, FColor::Green, TEXT("Joining Session"));

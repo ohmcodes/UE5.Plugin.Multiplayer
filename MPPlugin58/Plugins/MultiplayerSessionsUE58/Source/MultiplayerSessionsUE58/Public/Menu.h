@@ -17,7 +17,7 @@ class MULTIPLAYERSESSIONSUE58_API UMenu : public UUserWidget
 
 public:
 	UFUNCTION(BlueprintCallable)
-	void MenuSetup(int32 InNumPublicConnections = 4, FString InMatchType = TEXT("FreeForAll"));
+	void MenuSetup(int32 InNumPublicConnections = 4, FString InMatchType = TEXT("FreeForAll"), FString InPathToLobby = TEXT("/MultiplayerSessionsUE58/Levels/Lobby"));
 	
 
 protected:
@@ -52,5 +52,5 @@ private:
 
 	int32 NumPublicConnections{ 4 };
 	FString MatchType{ TEXT("FreeForAll") };
-
+	FString PathToLobby{ TEXT("/MultiplayerSessionsUE58/Levels/Lobby") };
 };
