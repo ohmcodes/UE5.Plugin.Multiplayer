@@ -182,6 +182,17 @@ void UMenu::OnDestroySession(bool bWasSuccessful)
 
 void UMenu::OnStartSession(bool bWasSuccessful)
 {
+	if (GEngine)
+	{
+		if (bWasSuccessful)
+		{
+			GEngine->AddOnScreenDebugMessage(-1, 15.f, FColor::Green, TEXT("Session started successfully!"));
+		}
+		else
+		{
+			GEngine->AddOnScreenDebugMessage(-1, 15.f, FColor::Red, TEXT("Failed to start session!"));
+		}
+	}
 }
 
 void UMenu::OnCreateClicked()
