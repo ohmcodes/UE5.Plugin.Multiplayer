@@ -5,7 +5,6 @@
 #include "Components/Button.h"
 #include "MultiplayerSessionsSubsystem.h"
 #include "OnlineSessionSettings.h"
-#include "Interfaces/OnlineSessionInterface.h"
 
 void UMenu::MenuSetup(int32 InNumPublicConnections, FString InMatchType, FString InPathToLobby)
 {

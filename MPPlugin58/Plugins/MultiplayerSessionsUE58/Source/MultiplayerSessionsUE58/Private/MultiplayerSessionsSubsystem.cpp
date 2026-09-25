@@ -14,16 +14,46 @@ UMultiplayerSessionsSubsystem::UMultiplayerSessionsSubsystem():
 	DestroySessionCompleteDelegate(FOnDestroySessionCompleteDelegate::CreateUObject(this, &ThisClass::OnDestroySessionComplete)),
 	StartSessionCompleteDelegate(FOnStartSessionCompleteDelegate::CreateUObject(this, &ThisClass::OnStartSessionComplete)),
 	FindFriendSessionCompleteDelegate(FOnFindFriendSessionCompleteDelegate::CreateUObject(this, &ThisClass::OnFindFriendSessionComplete)),
-	SessionInviteReceivedDelegate(FOnSessionInviteReceivedDelegate::CreateUObject(this, &ThisClass::OnSessionInviteReceived)),
-	SessionUserInviteAcceptedDelegate(FOnSessionUserInviteAcceptedDelegate::CreateUObject(this, &ThisClass::OnSessionUserInviteAccepted)),
-	ReadFriendsListCompleteDelegate(FOnReadFriendsListComplete::CreateUObject(this, &ThisClass::OnReadFriendsListComplete))
+	SessionUserInviteAcceptedDelegate(FOnSessionUserInviteAcceptedDelegate::CreateUObject(this, &ThisClass::OnSessionUserInviteAccepted))
 {
-	IOnlineSubsystem* Subsystem = IOnlineSubsystem::Get();
-	if (Subsystem)
+}
+
+void UMultiplayerSessionsSubsystem::Initialize(FSubsystemCollectionBase& Collection)
+{
+	Super::Initialize(Collection);
+
+	// Acquire interfaces now — the OSS is initialized by this point
+	if (IOnlineSubsystem* Subsystem = IOnlineSubsystem::Get())
 	{
+		UE_LOG(LogTemp, Warning, TEXT("Initialize: OSS=%s"),
+			*Subsystem->GetSubsystemName().ToString());
+
 		SessionInterface = Subsystem->GetSessionInterface();
 		FriendsInterface = Subsystem->GetFriendsInterface();
 	}
+
+	if (SessionInterface.IsValid())
+	{
+		SessionUserInviteAcceptedDelegateHandle =
+			SessionInterface->AddOnSessionUserInviteAcceptedDelegate_Handle(
+				SessionUserInviteAcceptedDelegate);
+
+		UE_LOG(LogTemp, Warning, TEXT("Invite delegates bound"));
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("SessionInterface invalid — invite delegates not bound"));
+	}
+}
+
+void UMultiplayerSessionsSubsystem::Deinitialize()
+{
+	if (SessionInterface.IsValid())
+	{
+		SessionInterface->ClearOnSessionUserInviteAcceptedDelegate_Handle(
+			SessionUserInviteAcceptedDelegateHandle);
+	}
+	Super::Deinitialize();
 }
 
 void UMultiplayerSessionsSubsystem::CreateSession(int32 NumPublicConnections, FString MatchType)
@@ -142,15 +172,73 @@ void UMultiplayerSessionsSubsystem::StartSession()
 
 void UMultiplayerSessionsSubsystem::FindFriendSession(int32 LocalPlayerNum, const FUniqueNetId& FriendUniqueNetId)
 {
+	if (!SessionInterface.IsValid())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("SessionInterface is not valid"));
+		MultiplayerOnFindFriendSessionComplete.Broadcast(LocalPlayerNum, false, TArray<FOnlineSessionSearchResult>());
+		return;
+	}
+
+	FindFriendSessionCompleteDelegateHandle = SessionInterface->AddOnFindFriendSessionCompleteDelegate_Handle(LocalPlayerNum, FindFriendSessionCompleteDelegate);
+
+	if (!SessionInterface->FindFriendSession(LocalPlayerNum, FriendUniqueNetId))
+	{
+		SessionInterface->ClearOnFindFriendSessionCompleteDelegate_Handle(LocalPlayerNum, FindFriendSessionCompleteDelegateHandle);
+		MultiplayerOnFindFriendSessionComplete.Broadcast(LocalPlayerNum, false, TArray<FOnlineSessionSearchResult>());
+		UE_LOG(LogTemp, Warning, TEXT("FindFriendSession call failed"));
+	}
 }
 
-void UMultiplayerSessionsSubsystem::SendSessionInviteToFriend(int32 LocalPlayerNum, const FUniqueNetId& FriendUniqueNetId)
+void UMultiplayerSessionsSubsystem::SendInviteToFriend(int32 LocalPlayerNum, const FUniqueNetId& FriendUniqueNetId)
 {
+	if (!SessionInterface.IsValid())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("SessionInterface is not valid"));
+		return;
+	}
+
+	if (SessionInterface->SendSessionInviteToFriend(
+		LocalPlayerNum, NAME_GameSession, FriendUniqueNetId))
+	{
+		UE_LOG(LogTemp, Display,
+			TEXT("Sent session invite from LocalPlayerNum %d to friend %s"),
+			LocalPlayerNum, *FriendUniqueNetId.ToString());
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning,
+			TEXT("SendSessionInviteToFriend FAILED for LocalPlayerNum %d, friend %s"),
+			LocalPlayerNum, *FriendUniqueNetId.ToString());
+	}
 }
 
 void UMultiplayerSessionsSubsystem::FriendsList(int32 LocalPlayerNum)
 {
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 20.f, FColor::Green, TEXT("FriendsList called"));
+	}
 
+	if (!FriendsInterface.IsValid())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("FriendsInterface is not valid"));
+		MultiplayerOnReadFriendsListComplete.Broadcast(LocalPlayerNum, false, TEXT(""), TEXT("FriendsInterface is not valid"));
+		return;
+	}
+
+	// Create the delegate inline and pass it as the third argument.
+	FOnReadFriendsListComplete ReadCompleteDelegate;
+	ReadCompleteDelegate.BindUObject(this, &ThisClass::OnReadFriendsListComplete);
+
+	if (!FriendsInterface->ReadFriendsList(LocalPlayerNum, TEXT("default"), ReadCompleteDelegate))
+	{
+		MultiplayerOnReadFriendsListComplete.Broadcast(LocalPlayerNum, false, TEXT("default"), TEXT("ReadFriendsList call failed"));
+		UE_LOG(LogTemp, Warning, TEXT("ReadFriendsList call failed for LocalPlayerNum: %d"), LocalPlayerNum);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Display, TEXT("ReadFriendsList called successfully for LocalPlayerNum: %d"), LocalPlayerNum);
+	}
 }
 
 void UMultiplayerSessionsSubsystem::OnCreateSessionComplete(FName SessionName, bool bWasSuccessful)
@@ -216,16 +304,68 @@ void UMultiplayerSessionsSubsystem::OnStartSessionComplete(FName SessionName, bo
 
 void UMultiplayerSessionsSubsystem::OnFindFriendSessionComplete(int32 LocalPlayerNum, bool bWasSuccessful, const TArray<FOnlineSessionSearchResult>& SessionResults)
 {
-}
+	if (SessionInterface.IsValid())
+	{
+		SessionInterface->ClearOnFindFriendSessionCompleteDelegate_Handle(LocalPlayerNum, FindFriendSessionCompleteDelegateHandle);
+	}
 
-void UMultiplayerSessionsSubsystem::OnSessionInviteReceived(const FUniqueNetId& LocalUserId, const FUniqueNetId& PersonInviting, const FString& AppId, const FOnlineSessionSearchResult& SearchResult)
-{
+	// Broadcast the custom delegate with the session results
+	MultiplayerOnFindFriendSessionComplete.Broadcast(LocalPlayerNum, bWasSuccessful, SessionResults);
+
+	if (bWasSuccessful && SessionResults.Num() > 0)
+	{
+		UE_LOG(LogTemp, Display, TEXT("Found friend session for LocalPlayerNum: %d with %d results"), LocalPlayerNum, SessionResults.Num());
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Failed to find friend session or no results found for LocalPlayerNum: %d"), LocalPlayerNum);
+	}
 }
 
 void UMultiplayerSessionsSubsystem::OnSessionUserInviteAccepted(bool bWasSuccessful, int32 LocalPlayerNum, FUniqueNetIdPtr PersonInvited, const FOnlineSessionSearchResult& SearchResult)
 {
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 15.f, FColor::Green, TEXT("OnSessionUserInviteAccepted called"));
+	}
+
+	if (!bWasSuccessful || !SearchResult.IsValid())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Failed to accept session invite for LocalPlayerNum: %d"), LocalPlayerNum);
+		MultiplayerOnSessionUserInviteAccepted.Broadcast(
+			false, LocalPlayerNum, PersonInvited, SearchResult);
+		return;
+	}
+
+	JoinSession(SearchResult);
+
+	MultiplayerOnSessionUserInviteAccepted.Broadcast(
+		bWasSuccessful, LocalPlayerNum, PersonInvited, SearchResult);
 }
 
 void UMultiplayerSessionsSubsystem::OnReadFriendsListComplete(int32 LocalPlayerNum, bool bWasSuccessful, const FString& ListName, const FString& ErrorStr)
 {
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 15.f, FColor::Green, TEXT("OnReadFriendsListComplete called"));
+	}
+
+	// Broadcast the custom delegate with the result
+	MultiplayerOnReadFriendsListComplete.Broadcast(LocalPlayerNum, bWasSuccessful, ListName, ErrorStr);
+
+	if (bWasSuccessful)
+	{
+		UE_LOG(LogTemp, Display, TEXT("Successfully read friends list for LocalPlayerNum: %d, List: %s"), LocalPlayerNum, *ListName);
+
+		// Retrieve the friends list after it has been read
+		TArray<TSharedRef<FOnlineFriend>> FriendsList;
+		if (FriendsInterface->GetFriendsList(LocalPlayerNum, ListName, FriendsList))
+		{
+			UE_LOG(LogTemp, Display, TEXT("Found %d friends in list %s"), FriendsList.Num(), *ListName);
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Failed to read friends list for LocalPlayerNum: %d, Error: %s"), LocalPlayerNum, *ErrorStr);
+	}
 }
